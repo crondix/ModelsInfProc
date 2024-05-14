@@ -4,23 +4,74 @@ using System.Collections.Generic;
 
 class Operator
 {
-    public int QueueLength
+    private int _nowTask;
+    private Queue<int> _queueCalls;
+
+  public  Operator()
     {
-        get
+        this._queueCalls= new Queue<int>();
+    }
+
+    public int QueueLength => this._queueCalls.Count;
+    public int nowTask => _nowTask;
+    public bool isQueueNotFull => this._queueCalls.Count < 2;
+    public bool tryAddNewTask(int taskCompletionTime)
+    {
+        if (this._queueCalls.Count<2)
         {
-           return Calls.Count;
+            if (this._nowTask==0)
+            {
+                this._nowTask= taskCompletionTime;
+               
+            }
+            else
+            {
+                this._queueCalls.Enqueue(taskCompletionTime);
+               
+            }
+            return true;
         }
+        else
+        {
+            return false; 
+        }
+       
     }
-    public int? now{  get; set; }
-    public Queue<int> Calls { get; } = new Queue<int>();
-    public bool isFree()
+    public void Tick(int tickTime)
     {
-        return now==0|| now == null;
+        if (this._nowTask != 0)
+        {
+            this._nowTask-= tickTime;
+            if (this._nowTask<=0)
+            {
+                if (this._nowTask != 0)
+                {
+                    if (this._queueCalls.Count > 0)
+                    {
+                        this._nowTask = this._queueCalls.Dequeue()- this._nowTask;
+                        if (this._nowTask < 0)
+                        {
+                            Tick(_nowTask);
+                        }
+                    }
+                    else
+                    {
+                        this._nowTask = 0;
+                    }
+                }
+                else
+                {
+                    if (this._queueCalls.Count > 0)
+                    {
+                        this._nowTask = this._queueCalls.Dequeue();
+                    }
+                }
+               
+            }
+        }
+
     }
-    public bool isQueueFree()
-    {
-        return Calls.Count < 2;
-    }
+
 
 }
 class Program
@@ -37,46 +88,63 @@ class Program
         };
           Random random = new Random();
        
-        int callTime() { return random.Next(2, 8); };
-        int QuestTime() { return random.Next(10, 50); }
-        for(int i=0; i<200; i++)
+        int timeToNewRequest () { return random.Next(2, 8); };
+        int newTaskTime() { return random.Next(10, 50); };
+        //operators[0].tryAddNewTask(newTaskTime());
+        int denied=0;
+        for (int i=1; i<2000; i++)
         {
-            int Quest = QuestTime();
+            int time = timeToNewRequest();
+            Console.WriteLine("Tick time:" + time);
             for (int k = 0; k < operators.Length; k++)
             {
-                operators[k].now = QuestTime();
+                operators[k].Tick(time);
+                Console.WriteLine($"{k+1} operator task now:{operators[k].nowTask} queue langth:{operators[k].QueueLength}") ;
             }
-        }
-
-      void Tick(Operator[] operators, int callTime)
-        {
-            for(int i = 0; i < operators.Length; i++)
+            try
             {
-                if (operators[i].now != 0 || operators[i].now != null)
+                int minLoadId = getMinLoadId(operators);
+                int TaskTime = newTaskTime();
+                if (minLoadId >= 0) {
+                    operators[minLoadId].tryAddNewTask(TaskTime);
+
+                }else
                 {
-                    operators[i].now -= callTime;
-                    if (operators[i].now <= 0)
-                    {
-                        if (operators[i].QueueLength != 0)
-                        {
-                          operators[i].now = operators[i].Calls.Dequeue();
-                        }
-                            
-                    }
+                    Console.WriteLine($"{i} itaration denied");
+                    denied++;
                 }
-              
+               
+                Console.WriteLine($"{i} call for {minLoadId+1} operator, task time:{TaskTime}, task at queue:{operators[minLoadId].QueueLength}");
+                Console.WriteLine($"----------------------------------------");
             }
+            catch(Exception e)
+            {
+                Console.WriteLine(e);
+            }
+           
         }
-       
-      int  getMinLoadId(){
-            int minLoadId = 0;
+        Console.WriteLine($"all denied calls:{denied}");
+
+
+        static int getMinLoadId(Operator[] operators)
+        {
+            int minLoadId = -1;
+            int minLoad = int.MaxValue;
+
             for (int i = 0; i < operators.Length; i++)
             {
-                if (operators[i].isQueueFree() && operators[i].QueueLength < operators[minLoadId].QueueLength)
+                if (operators[i].nowTask == 0)
                 {
-                    minLoadId = operators[i].QueueLength;
+                    minLoadId = i;
+                    break;
                 }
-              
+
+                int load = operators[i].QueueLength + (operators[i].isQueueNotFull ? 1 : 0);
+                if (load < minLoad)
+                {
+                    minLoad = load;
+                    minLoadId = i;
+                }
             }
             return minLoadId;
         }
@@ -85,13 +153,5 @@ class Program
 
 
 
-        int test = 0;
-        
-        for (int i = 0; i < 15; i++)
-        {
-           test+= ;
-        }
-        // Выводим полученное случайное значение
-        Console.WriteLine("test: " + test);
     }
 }
