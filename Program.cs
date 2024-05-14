@@ -14,7 +14,7 @@ class Operator
 
     public int QueueLength => this._queueCalls.Count;
     public int nowTask => _nowTask;
-    public bool isQueueNotFull => this._queueCalls.Count < 2;
+    public bool isQueueFull => this._queueCalls.Count < 2;
     public bool tryAddNewTask(int taskCompletionTime)
     {
         if (this._queueCalls.Count<2)
@@ -88,11 +88,11 @@ class Program
         };
           Random random = new Random();
        
-        int timeToNewRequest () { return random.Next(2, 8); };
-        int newTaskTime() { return random.Next(10, 50); };
+        int timeToNewRequest () { return random.Next(2, 4); };
+        int newTaskTime() { return random.Next(40, 50); };
         //operators[0].tryAddNewTask(newTaskTime());
         int denied=0;
-        for (int i=1; i<2000; i++)
+        for (int i=1; i<50; i++)
         {
             int time = timeToNewRequest();
             Console.WriteLine("Tick time:" + time);
@@ -105,16 +105,18 @@ class Program
             {
                 int minLoadId = getMinLoadId(operators);
                 int TaskTime = newTaskTime();
-                if (minLoadId >= 0) {
-                    operators[minLoadId].tryAddNewTask(TaskTime);
+                if (minLoadId >= 0 && operators[minLoadId].tryAddNewTask(TaskTime)) {
+                    
+                    Console.WriteLine($"{i} call for {minLoadId + 1} operator, task time:{TaskTime}, task at queue:{operators[minLoadId].QueueLength}");
 
-                }else
+                }
+                else
                 {
                     Console.WriteLine($"{i} itaration denied");
                     denied++;
                 }
                
-                Console.WriteLine($"{i} call for {minLoadId+1} operator, task time:{TaskTime}, task at queue:{operators[minLoadId].QueueLength}");
+               
                 Console.WriteLine($"----------------------------------------");
             }
             catch(Exception e)
@@ -128,18 +130,22 @@ class Program
 
         static int getMinLoadId(Operator[] operators)
         {
+            // Первый свободный оператор
+            for (int i = 0; i < operators.Length; i++)
+            {
+                if (operators[i].nowTask == 0)
+                {
+                    return i;
+                }
+            }
+
+            // Если все операторы заняты, ищем оператор с минимальной загрузкой
             int minLoadId = -1;
             int minLoad = int.MaxValue;
 
             for (int i = 0; i < operators.Length; i++)
             {
-                if (operators[i].nowTask == 0)
-                {
-                    minLoadId = i;
-                    break;
-                }
-
-                int load = operators[i].QueueLength + (operators[i].isQueueNotFull ? 1 : 0);
+                int load = operators[i].QueueLength + (operators[i].isQueueFull ? 1 : 0);
                 if (load < minLoad)
                 {
                     minLoad = load;
@@ -148,10 +154,6 @@ class Program
             }
             return minLoadId;
         }
-
-
-
-
 
     }
 }
